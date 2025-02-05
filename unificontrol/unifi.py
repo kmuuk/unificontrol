@@ -107,10 +107,14 @@ class UnifiClient(metaclass=MetaNameFixer):
             resp = ses.send(ses.prepare_request(request))
 
         if resp.ok:
+            # If we get a CSRF header back, save the token to be reused in
+            # future requests
+            if 'X-CSRF-Token' in resp.headers:
+                ses.headers.update({'X-CSRF-Token': resp.headers['X-CSRF-Token']})
             response = resp.json()
             if 'meta' in response and response['meta']['rc'] != 'ok':
                 raise UnifiAPIError(response['meta']['msg'])
-            return response['data']
+            return response
         else:
             raise UnifiTransportError("{}: {}".format(resp.status_code, resp.reason))
 
@@ -138,7 +142,7 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     _login = UnifiAPICallNoSite(
         "raw login command",
-        "login",
+        "/api/auth/login",
         json_args=["username", "password"],
         need_login=False)
 
@@ -157,7 +161,7 @@ class UnifiClient(metaclass=MetaNameFixer):
 
     logout = UnifiAPICallNoSite(
         "Log out from Unifi controller",
-        "logout",
+        "/api/auth/logout",
         need_login=False)
 
     # Functions for dealing with guest and client devices
